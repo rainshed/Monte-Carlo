@@ -1,3 +1,25 @@
+!program main
+!	implicit none
+!	real(8) :: x,y,r,pi
+!	integer :: i,c,N=10000
+!	
+!
+!	call random_seed()
+!	c = 0
+!	do i = 1,N
+!	   call random_number(x)
+!	   call random_number(y)
+!	   r = sqrt(x**2+y**2)
+!	   if (r<1) then
+!		   c = c+1
+!	   endif
+!	end do
+!	pi = dble(c)/dble(N)
+!	write(*,*) pi
+!
+!	
+!
+!end program
 
 program main
 	
@@ -7,16 +29,18 @@ program main
 	real :: x
 	integer,dimension(:),allocatable :: SEED,status
 
-	integer :: j,c
-	integer,parameter :: total=10000,seq_num = 1000
-	real(8) :: y,r,pi,sigma
-	real(8) :: pi_seq(seq_num)
+	integer :: j,c,seq_num 
+	integer,parameter :: total=100000
+	real(8) :: y,r,pi
+	real(8),allocatable :: pi_seq(:)
 	real(8) , allocatable :: pi_all(:,:)
 
 	call MPI_INIT(rc)
 	call MPI_COMM_SIZE(MPI_COMM_WORLD,ntasks,rc)
 	call MPI_COMM_RANK(MPI_COMM_WORLD,id,rc)
 	allocate(Status(MPI_STATUS_SIZE))
+	seq_num = ntasks -1
+	allocate(pi_seq(ntasks-1))
 
 	if (id == 0) then
 		call SYSTEM_CLOCK(clock)
@@ -28,6 +52,7 @@ program main
 		call RANDOM_SEED(PUT=SEED)
 		deallocate(SEED)
 		call RANDOM_NUMBER(x)
+		write(*,*) id,x
 
 		do i = 1, ntasks - 1
 		  call RANDOM_NUMBER(x)
@@ -37,30 +62,11 @@ program main
 
 		allocate(pi_all(ntasks-1,seq_num))
 		do i = 1, ntasks - 1
-		  call MPI_RECV(pi_seq, seq_num, MPI_DOUBLE_PRECISION, i, i, MPI_COMM_WORLD, status, rc)
-		  pi_all(i,:) = pi_seq
+		  call MPI_RECV(pi, 1, MPI_DOUBLE_PRECISION, i, i+ntasks, MPI_COMM_WORLD, status, rc)
+		  write(*,*) pi
+		  pi_seq(i) = pi
 		end do
-
-		pi = 0
-		do i = 1,ntasks -1
-		  do j = 1,seq_num
-		    pi = pi + pi_all(i,j)
-		  end do
-		end do
-		pi = pi/dble(seq_num*(ntasks-1))
-
-		write(*,*) 'pi average',pi
-
-		sigma = 0
-		do i = 1,ntasks - 1
-		  do j = 1,seq_num
-		    sigma = sigma + (pi_all(i,j)-pi)**2
-		  end do
-		end do
-		sigma = sigma/dble(seq_num*(ntasks-1))
-		write(*,*) 'sigma',sigma
-
-!		write(*,*) pi_all(1,:)
+		
 	else
 		call MPI_RECV(clock, 1, MPI_LONG, 0, id, MPI_COMM_WORLD, status, rc)
 		call RANDOM_SEED(size=n)
@@ -71,7 +77,7 @@ program main
 		call RANDOM_SEED(PUT=SEED)
 		deallocate(SEED)
 		call RANDOM_NUMBER(x)
-		do j = 1,seq_num
+!		do j = 1,seq_num
 			c = 0
 	   		do i = 1,total
 	   		   call random_number(x)
@@ -82,10 +88,10 @@ program main
 	   		   endif
 	   		end do
 	   		pi = dble(c)/dble(total)*4
-	   		pi_seq(j) = pi
-		end do
-!		write(*,*) 'seq',pi_seq
-		call MPI_SEND(pi_seq, seq_num , MPI_DOUBLE_PRECISION, 0 , id, MPI_COMM_WORLD,rc)
+!	   		pi_seq(j) = pi
+!		end do
+!		write(*,*) pi
+		call MPI_SEND(pi, 1 , MPI_DOUBLE_PRECISION, 0 , id+ntasks, MPI_COMM_WORLD,rc)
 	end if
 
 !	call MPI_REDUCE(pi,tpi,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,rc)
