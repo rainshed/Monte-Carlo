@@ -12,6 +12,7 @@ program main
 	integer :: warm_up = 100000, total = 100000
 	real(8) ::  eps = -1, E1, E2, p,T=1
 	real(8) :: m,m1,m2,chi,c,energy,energy2,energy_t
+	character(2) :: num
 
 
 	call MPI_INIT(rc)
@@ -56,6 +57,9 @@ program main
 
 !------------------------------------------------------------------------------------------------
 		state = 1
+
+
+
 		do k = id,500,ntasks
 		T = dble(k)/dble(100)
 		if (id==1) then
@@ -128,13 +132,14 @@ program main
 		energy_t = energy_t/total
 		energy2 = energy2/total
 		c = energy2 - energy_t**2
-		open(unit=11,file='data/M_T_s32.dat',status='unknown')
-		open(unit=12,file='data/chi_T_s32.dat',status='unknown')
-		open(unit=13,file='data/C_T_s32.dat',status='unknown')
 		
-		write(11,*) T,m
-		write(12,*) T,chi
-		write(13,*) T,c
+		write(num,'(i2)') id
+		open(unit=id,file='data/'//'sp'//trim(adjustl(num))//'M_T_s32.dat',status='unknown')
+		open(unit=id+30,file='data/'//'sp'//trim(adjustl(num))//'chi_T_s32.dat',status='unknown')
+		open(unit=id+100,file='data/'//'sp'//trim(adjustl(num))//'C_T_s32.dat',status='unknown')
+		write(id,*) T,m
+		write(id+30,*) T,chi
+		write(id+100,*) T,c
 
 
 		end do 
@@ -159,5 +164,10 @@ program main
 !	call MPI_REDUCE(pi,tpi,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,rc)
 
 	call MPI_FINALIZE(rc)
+
+	call execute_command_line("cat data/sp*C*s32.dat > data/C_T_s32.dat")
+	call execute_command_line("cat data/sp*chi*s32.dat > data/chi_T_s32.dat")
+	call execute_command_line("cat data/sp*M*s32.dat > data/M_T_s32.dat")
+	call execute_command_line("rm data/sp*")
 
 end program
